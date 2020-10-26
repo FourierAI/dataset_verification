@@ -2,7 +2,11 @@
 /shelf/
 /workspace.xml
 # Datasource local storage ignored files
+<<<<<<< HEAD
 /../../../../../../:\Users\t-zhipengye\PycharmProjects\data_verification\.idea/dataSources/
+=======
+/../../../../../../:\Users\t-zhipengye\PycharmProjects\dataset_verification\.idea/dataSources/
+>>>>>>> 39230215396e4dce351784a684746ef93e73edc3
 /dataSources.local.xml
 # Editor-based HTTP Client requests
 /httpRequests/
