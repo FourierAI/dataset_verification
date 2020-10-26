@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-<<<<<<< HEAD
       <module fileurl="file://$PROJECT_DIR$/.idea/data_verification.iml" filepath="$PROJECT_DIR$/.idea/data_verification.iml" />
-=======
-      <module fileurl="file://$PROJECT_DIR$/.idea/dataset_verification.iml" filepath="$PROJECT_DIR$/.idea/dataset_verification.iml" />
->>>>>>> 39230215396e4dce351784a684746ef93e73edc3
     </modules>
   </component>
 </project>
