@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# _*_ coding: utf-8 _*_
-# @Time : 2020/11/2 16:18
-# @Author : Zhipeng Ye
-# @File : main.py
-# @desc : Dataset verfication module
-
 import argparse
 import json
 
