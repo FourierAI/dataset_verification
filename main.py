@@ -1,69 +1,144 @@
+#!/usr/bin/env python
+# _*_ coding: utf-8 _*_
+# @Time : 2020/11/2 16:18
+# @Author : Zhipeng Ye
+# @File : main.py
+# @desc : Dataset verfication module
+
 import argparse
 import json
 
 
+# package data as object
+class VerificationResult:
+
+    def __init__(self, num_samples, num_each_label, num_error, correct_ratio, error_lines, error_lines_index, labels):
+        self.num_samples = num_samples
+        self.num_each_labels = num_each_label
+        self.num_error = num_error
+        self.correct_ratio = correct_ratio
+        self.labels = list(labels)
+        self.status = 'successful'
+        if self.num_error > 0:
+            self.error_lines = error_lines
+            self.error_lines_index = error_lines_index
+            self.status = 'failure'
+
+
+# single label dataset verification module
 def verify_single_classification(input_filepath):
     error_lines = []
     error_lines_index = []
     labels = set()
+    num_error = 0
+    num_each_label = {}
     with open(input_filepath) as file:
         for index, line in enumerate(file):
             contents = line.split('\t')
-            labels.add(contents[0])
+            label = contents[0]
+            labels.add(label)
+
+            # count each labels
+            if label not in num_each_label:
+                num_each_label[label] = 1
+            else:
+                num_each_label[label] += 1
+
+            # count error lines
             if not len(contents) == 2:
+                num_error += 1
                 error_lines.append(line)
-                error_lines_index.append(str(index + 1))
-    return error_lines, error_lines_index, list(labels)
+                error_lines_index.append(index + 1)
+
+    # compute statistical indicators
+    num_samples = index + 1
+    correct_ratio = (num_samples - num_error) / num_samples
+
+    verification_result = VerificationResult(num_samples, num_each_label, num_error, correct_ratio, error_lines,
+                                             error_lines_index, labels)
+    return verification_result
 
 
+# multi labels dataset verification module
 def verify_multi_classification(input_filepath):
     error_lines = []
     error_lines_index = []
     labels = set()
+    num_error = 0
+    num_each_label = {}
     with open(input_filepath) as file:
         for index, line in enumerate(file):
             contents = line.split('\t')
             label_list = contents[0].split(',')
-            labels.add(label_list)
+            labels.update(label_list)
+
+            # count each labels
+            for label in label_list:
+                if label not in num_each_label:
+                    num_each_label[label] = 1
+                else:
+                    num_each_label[label] += 1
+
+            # count error lines
             if '' in label_list or not len(contents) == 2:
+                num_error += 1
                 error_lines.append(line)
-                error_lines_index.append(str(index + 1))
-    return error_lines, error_lines_index, list(labels)
+                error_lines_index.append(index + 1)
+
+    # compute statistical indicators
+    num_samples = index + 1
+    correct_ratio = (num_samples - num_error) / num_samples
+
+    verification_result = VerificationResult(num_samples, num_each_label, num_error, correct_ratio, error_lines,
+                                             error_lines_index, labels)
+    return verification_result
 
 
+# named entity recognition dataset verification module
 def verify_named_entity_recognition(input_filepath):
     error_lines = []
     error_lines_index = []
     labels = set()
+    num_error = 0
+    num_each_label = {}
     with open(input_filepath) as file:
         for index, line in enumerate(file):
+
+            # count error lines
             try:
-                jsobj = json.loads(line)
+                json_obj = json.loads(line)
             except Exception:
                 error_lines.append(line)
-                error_lines_index.append(str(index + 1))
-            if jsobj and not ('raw_text' in jsobj and 'entities' in jsobj):
+                error_lines_index.append(index + 1)
+                num_error += 1
+            if json_obj and not ('raw_text' in json_obj and 'entities' in json_obj):
                 error_lines.append(line)
                 error_lines_index.append(str(index + 1))
+                num_error += 1
 
-            if jsobj and 'entities' in jsobj and len(jsobj['entities']) > 0:
-                for entity in jsobj['entities']:
-                    labels.add(entity['class_name'])
+            if json_obj and 'entities' in json_obj and len(json_obj['entities']) > 0:
+                for entity in json_obj['entities']:
+                    label = entity['class_name']
+                    labels.add(label)
 
-    return error_lines, error_lines_index, list(labels)
+                    # count each labels
+                    if label not in num_each_label:
+                        num_each_label[label] = 1
+                    else:
+                        num_each_label[label] += 1
+
+    # compute statistical indicators
+    num_samples = index + 1
+    correct_ratio = (num_samples - num_error) / num_samples
+
+    verification_result = VerificationResult(num_samples, num_each_label, num_error, correct_ratio, error_lines,
+                                             error_lines_index, labels)
+    return verification_result
 
 
-def dump_result(output_filepath, error_lines, error_lines_index, labels):
-    json_obj = {}
-    if len(error_lines) > 0:
-        json_obj['result'] = 'failure'
-        json_obj['error lines'] = error_lines
-        json_obj['error lines index'] = error_lines_index
-    else:
-        json_obj['result'] = 'successful'
-    json_obj['labels'] = labels
+def dump_result(output_filepath, verification_result):
     with open(output_filepath, 'w') as file:
-        json.dump(json_obj, file, ensure_ascii=False)
+        json.dump(verification_result, file, ensure_ascii=False, default=lambda obj: obj.__dict__)
 
 
 def main():
@@ -77,12 +152,12 @@ def main():
     output_filepath = args.output
     dataset_type = args.type
     if dataset_type == 'SC':
-        error_lines, error_lines_index, labels = verify_single_classification(input_filepath)
+        verification_result = verify_single_classification(input_filepath)
     elif dataset_type == 'MC':
-        error_lines, error_lines_index, labels = verify_multi_classification(input_filepath)
+        verification_result = verify_multi_classification(input_filepath)
     else:
-        error_lines, error_lines_index, labels = verify_named_entity_recognition(input_filepath)
-    dump_result(output_filepath, error_lines, error_lines_index, labels)
+        verification_result = verify_named_entity_recognition(input_filepath)
+    dump_result(output_filepath, verification_result)
 
 
 if __name__ == '__main__':
