@@ -28,8 +28,9 @@ def verify_single_classification(input_filepath):
     with open(input_filepath) as file:
         for index, line in enumerate(file):
             contents = line.split('\t')
-            label = contents[0]
-            labels.add(label)
+            if len(contents) == 2:
+                label = contents[0]
+                labels.add(label)
 
             # count each labels
             if label not in num_each_label:
@@ -62,8 +63,9 @@ def verify_multi_classification(input_filepath):
     with open(input_filepath) as file:
         for index, line in enumerate(file):
             contents = line.split('\t')
-            label_list = contents[0].split(',')
-            labels.update(label_list)
+            if len(contents) == 2:
+                label_list = contents[0].split(',')
+                labels.update(label_list)
 
             # count each labels
             for label in label_list:
