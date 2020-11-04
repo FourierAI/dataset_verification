@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 
 
 # package data as object
@@ -32,17 +33,17 @@ def verify_single_classification(input_filepath):
                 label = contents[0]
                 labels.add(label)
 
-            # count each labels
-            if label not in num_each_label:
-                num_each_label[label] = 1
-            else:
-                num_each_label[label] += 1
+                # count each labels
+                if label not in num_each_label:
+                    num_each_label[label] = 1
+                else:
+                    num_each_label[label] += 1
 
             # count error lines
             if not len(contents) == 2:
                 num_error += 1
                 error_lines.append(line)
-                error_lines_index.append(index + 1)
+                error_lines_index.append(str(index + 1))
 
     # compute statistical indicators
     num_samples = index + 1
@@ -67,18 +68,18 @@ def verify_multi_classification(input_filepath):
                 label_list = contents[0].split(',')
                 labels.update(label_list)
 
-            # count each labels
-            for label in label_list:
-                if label not in num_each_label:
-                    num_each_label[label] = 1
-                else:
-                    num_each_label[label] += 1
+                # count each labels
+                for label in label_list:
+                    if label not in num_each_label:
+                        num_each_label[label] = 1
+                    else:
+                        num_each_label[label] += 1
 
             # count error lines
             if '' in label_list or not len(contents) == 2:
                 num_error += 1
                 error_lines.append(line)
-                error_lines_index.append(index + 1)
+                error_lines_index.append(str(index + 1))
 
     # compute statistical indicators
     num_samples = index + 1
@@ -104,7 +105,7 @@ def verify_named_entity_recognition(input_filepath):
                 json_obj = json.loads(line)
             except Exception:
                 error_lines.append(line)
-                error_lines_index.append(index + 1)
+                error_lines_index.append(str(index + 1))
                 num_error += 1
             if json_obj and not ('raw_text' in json_obj and 'entities' in json_obj):
                 error_lines.append(line)
@@ -131,8 +132,27 @@ def verify_named_entity_recognition(input_filepath):
     return verification_result
 
 
-def dump_result(output_filepath, verification_result):
-    with open(output_filepath, 'w') as file:
+def dump_result(output_directory_path, verification_result):
+    statistical_indicators_filename = 'statistics.json'
+    error_lines_filename = 'error_lines.txt'
+    error_lines_index_filename = 'error_lines_index.txt'
+
+    if verification_result.num_error > 0:
+        error_lines = verification_result.error_lines
+        error_lines_index = verification_result.error_lines_index
+
+        # write error lines
+        with open(os.path.join(output_directory_path, error_lines_filename), 'w') as file:
+            file.write(''.join(error_lines))
+
+        # write error lines index
+        with open(os.path.join(output_directory_path, error_lines_index_filename), 'w') as file:
+            file.write(','.join(error_lines_index))
+        del verification_result.error_lines
+        del verification_result.error_lines_index
+
+    # write statistical indicators
+    with open(os.path.join(output_directory_path, statistical_indicators_filename), 'w') as file:
         json.dump(verification_result, file, ensure_ascii=False, default=lambda obj: obj.__dict__)
 
 
@@ -144,7 +164,7 @@ def main():
                         help='SC: single classification, MC: multi classification, NER: named entity recognition')
     args = parser.parse_args()
     input_filepath = args.input
-    output_filepath = args.output
+    output_directory_path = args.output
     dataset_type = args.type
     if dataset_type == 'SC':
         verification_result = verify_single_classification(input_filepath)
@@ -152,7 +172,7 @@ def main():
         verification_result = verify_multi_classification(input_filepath)
     else:
         verification_result = verify_named_entity_recognition(input_filepath)
-    dump_result(output_filepath, verification_result)
+    dump_result(output_directory_path, verification_result)
 
 
 if __name__ == '__main__':
