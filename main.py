@@ -6,13 +6,16 @@ import os
 # package data as object
 class VerificationResult:
 
-    def __init__(self, num_samples, num_each_label, num_error, correct_ratio, error_lines, error_lines_index, labels):
+    def __init__(self, num_samples, num_each_label, num_error, correct_ratio, error_lines, error_lines_index, labels,
+                 labels_files, labels_files_name):
         self.num_samples = num_samples
         self.num_each_labels = num_each_label
         self.num_error = num_error
         self.correct_ratio = correct_ratio
         self.labels = list(labels)
         self.status = 'successful'
+        self.labels_files = labels_files
+        self.labels_files_name = labels_files_name
         if self.num_error > 0:
             self.error_lines = error_lines
             self.error_lines_index = error_lines_index
@@ -26,12 +29,20 @@ def verify_single_classification(input_filepath):
     labels = set()
     num_error = 0
     num_each_label = {}
+    labels_files = {}
+    labels_files_name = {}
     with open(input_filepath) as file:
         for index, line in enumerate(file):
             contents = line.split('\t')
             if len(contents) == 2:
                 label = contents[0]
                 labels.add(label)
+
+                # count labels files
+                if label not in labels_files:
+                    labels_files[label] = []
+                else:
+                    labels_files[label].append(line)
 
                 # count each labels
                 if label not in num_each_label:
@@ -45,12 +56,19 @@ def verify_single_classification(input_filepath):
                 error_lines.append(line)
                 error_lines_index.append(str(index + 1))
 
+    # create labels file name
+    label_str = 'label'
+    for index, label in enumerate(labels):
+        file_name = label_str + str(index + 1) + '.txt'
+        labels_files_name[label] = file_name
+
     # compute statistical indicators
     num_samples = index + 1
     correct_ratio = (num_samples - num_error) / num_samples
 
     verification_result = VerificationResult(num_samples, num_each_label, num_error, correct_ratio, error_lines,
-                                             error_lines_index, labels)
+                                             error_lines_index, labels,
+                                             labels_files, labels_files_name)
     return verification_result
 
 
@@ -61,12 +79,20 @@ def verify_multi_classification(input_filepath):
     labels = set()
     num_error = 0
     num_each_label = {}
+    labels_files_name = {}
+    labels_files = {}
     with open(input_filepath) as file:
         for index, line in enumerate(file):
             contents = line.split('\t')
             if len(contents) == 2:
                 label_list = contents[0].split(',')
                 labels.update(label_list)
+
+                # count labels files
+                if label not in labels_files:
+                    labels_files[label] = []
+                else:
+                    labels_files[label].append(line)
 
                 # count each labels
                 for label in label_list:
@@ -81,12 +107,19 @@ def verify_multi_classification(input_filepath):
                 error_lines.append(line)
                 error_lines_index.append(str(index + 1))
 
+    # create labels file name
+    label_str = 'label'
+    for index, label in enumerate(labels):
+        file_name = label_str + str(index + 1) + '.txt'
+        labels_files_name[label] = file_name
+
     # compute statistical indicators
     num_samples = index + 1
     correct_ratio = (num_samples - num_error) / num_samples
 
     verification_result = VerificationResult(num_samples, num_each_label, num_error, correct_ratio, error_lines,
-                                             error_lines_index, labels)
+                                             error_lines_index, labels,
+                                             labels_files, labels_files_name)
     return verification_result
 
 
@@ -97,6 +130,8 @@ def verify_named_entity_recognition(input_filepath):
     labels = set()
     num_error = 0
     num_each_label = {}
+    labels_files_name = {}
+    labels_files = {}
     with open(input_filepath) as file:
         for index, line in enumerate(file):
 
@@ -117,18 +152,31 @@ def verify_named_entity_recognition(input_filepath):
                     label = entity['class_name']
                     labels.add(label)
 
+                    # count labels files
+                    if label not in labels_files:
+                        labels_files[label] = []
+                    else:
+                        labels_files[label].append(line)
+
                     # count each labels
                     if label not in num_each_label:
                         num_each_label[label] = 1
                     else:
                         num_each_label[label] += 1
 
+    # create labels file name
+    label_str = 'label'
+    for index, label in enumerate(labels):
+        file_name = label_str + str(index + 1) + '.txt'
+        labels_files_name[label] = file_name
+
     # compute statistical indicators
     num_samples = index + 1
     correct_ratio = (num_samples - num_error) / num_samples
 
     verification_result = VerificationResult(num_samples, num_each_label, num_error, correct_ratio, error_lines,
-                                             error_lines_index, labels)
+                                             error_lines_index, labels,
+                                             labels_files, labels_files_name)
     return verification_result
 
 
@@ -148,8 +196,19 @@ def dump_result(output_directory_path, verification_result):
         # write error lines index
         with open(os.path.join(output_directory_path, error_lines_index_filename), 'w') as file:
             file.write(','.join(error_lines_index))
+
+        # write label files
+        labels_files = verification_result.labels_files_name
+        files = verification_result.labels_files
+        for label in labels_files:
+            file_name = labels_files[label]
+            file_content = files[label]
+            with open(file_name, 'w') as file:
+                file.write(''.join(file_content))
+
         del verification_result.error_lines
         del verification_result.error_lines_index
+        del verification_result.labels_files
 
     # write statistical indicators
     with open(os.path.join(output_directory_path, statistical_indicators_filename), 'w') as file:
